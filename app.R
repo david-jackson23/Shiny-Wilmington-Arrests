@@ -1,15 +1,6 @@
-#
-# This is the server logic of a Shiny web application. You can run the 
-# application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-# 
-#    http://shiny.rstudio.com/
-#
-
-#library(INLA)
 library(rgdal)
 library(viridis)
+library(sf)
 
 fillmap2<-function(map, figtitle, y , leg.loc="beside", y.scl=NULL,main.cex=1.5,main.line=0,map.lty=1,leg.rnd=0,leg.cex=1){
   # 0: dark 1: light light Current shading ranges from darkest to light gray white (to distinguish with lakes).
@@ -49,16 +40,16 @@ library(shiny)
 
 #data and shapefile setup
 
-data = read.csv("Data\\final_data.csv")
-effects = read.csv("Data\\shiny effects.csv")
+data = read.csv("data/final_data.csv")
+effects = read.csv("data/shiny effects.csv")
 
-NCtracts = readOGR("Data\\NHtracts.shp")
+NCtracts = readOGR("data/tl_2016_37_tract.shp")
 NHtracts = NCtracts[which(NCtracts$COUNTYFP == 129),]
 tracts = NHtracts[order(NHtracts$TRACTCE),]
 tracts = tracts[which(tracts$TRACTCE != 990100),]
 
 # Define UI for application that draws a histogram
-ui < - shinyUI(fluidPage(
+ui <- shinyUI(fluidPage(
   
   # Application title
   titlePanel("2010-2018 Wilmington Police Department Arrest Data"),
@@ -73,7 +64,7 @@ ui < - shinyUI(fluidPage(
                   value=2010,
                   sep="",
                   animate=animationOptions(interval=500,loop=TRUE)),      
-      radioButtons("types",
+      radioButtons("data",
                    label="Data:",
                    c("Total Overall Arrests",
                      "White Only Arrests",
@@ -82,7 +73,7 @@ ui < - shinyUI(fluidPage(
                    label="Data Adjustment:",
                    c("No Adjustments",
                      "As a Percent of the County Population",
-                     "As a Percent of Total Overall Arrests",
+                     "As a Percent of Totals Overall Arrests",
                      "Standardized Incidence Ratio",
                      "Poisson Regression"))),
     
@@ -95,7 +86,6 @@ ui < - shinyUI(fluidPage(
 
 # Define server logic required to draw a histogram
 server <- (function(input, output) {
-  
   output$text <- renderText({
     if (input$adj=="None"){
       "No adjustments specified. These are the counts of arrests during each year for the selected data."
@@ -110,110 +100,101 @@ server <- (function(input, output) {
             "The 'As a Percent of the Population' adjustment displays the selected arrests counts divided by the appropriate population (e.g. Black population only when 'Black Only Arrests' is selected) times 100%."
           } else{#% tot arrests
             "The 'As a Percent of Total Arrests' adjustment displays the selected arrests counts divided by the total arrest counts times 100%."
-          }
-  })
-   
+          }})
+  
   output$map <- renderPlot({
-    
     if (input$adj == "None"){
-      if (input$types == "Total Arrests"){
-        fillmap2(tracts,paste(input$year,input$types),data$arrests_total[which(data$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$arrests_total,leg.cex=1,leg.rnd=3)
+      if (input$data == "Total Arrests"){
+        fillmap2(tracts,paste(input$year,input$data),data$arrests_total[which(data$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$arrests_total,leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "White Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types),data$arrests_W[which(data$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$arrests_W,leg.cex=1,leg.rnd=3)
+      if (input$data == "White Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data),data$arrests_W[which(data$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$arrests_W,leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "Black Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types),data$arrests_B[which(d.inla$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$arrests_B,leg.cex=1,leg.rnd=3)
-      }
-    }
-    
+      if (input$data == "Black Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data),data$arrests_B[which(d.inla$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$arrests_B,leg.cex=1,leg.rnd=3)
+      }}
     if (input$adj == "As a Percent of the Population"){
-      if (input$types == "Total Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$tot_arr_pct_co_pop[which(data$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$tot_arr_pct_co_pop,leg.cex=1,leg.rnd=3)
+      if (input$data == "Total Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$tot_arr_pct_co_pop[which(data$year==input$year)],map.lty=0,leg.loc='below',y.scl=data$tot_arr_pct_co_pop,leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "White Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$w_arr_pct_co_pop[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      if (input$data == "White Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$w_arr_pct_co_pop[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "Black Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$b_arr_pct_co_pop[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
-      }
-    }
-    
+      if (input$data == "Black Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$b_arr_pct_co_pop[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      }}
     if (input$adj == "As a Percent of Total Arrests"){
-      if (input$types == "Total Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$tot_arr_pct_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      if (input$data == "Total Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$tot_arr_pct_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "White Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$w_arr_pct_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      if (input$data == "White Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$w_arr_pct_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "Black Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$b_arr_pct_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
-      }
-    }
-    
+      if (input$data == "Black Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$b_arr_pct_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      }}
     if (input$adj == "Standardized Incidence Ratio"){
-      if (input$types == "Total Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$sir_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      if (input$data == "Total Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$sir_total[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "White Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$sir_white[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      if (input$data == "White Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$sir_white[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "Black Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),data$sir_black[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
-      }
-    }
-    
+      if (input$data == "Black Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),data$sir_black[which(data$year==input$year)],map.lty=0,leg.loc='below',leg.cex=1,leg.rnd=3)
+      }}
     if (input$adj == "Poisson Regression"){
-      if (input$types == "Total Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),exp(data$total_effects[which(data$year==input$year)]),map.lty=0,leg.loc='below',y.scl=exp(data$total_effects),leg.cex=1,leg.rnd=3)
+      if (input$data == "Total Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),exp(data$total_effects[which(data$year==input$year)]),map.lty=0,leg.loc='below',y.scl=exp(data$total_effects),leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "White Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),exp(data$white_effects[which(data$year==input$year)]),map.lty=0,leg.loc='below',y.scl=exp(data$white_effects),leg.cex=1,leg.rnd=3)
+      if (input$data == "White Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),exp(data$white_effects[which(data$year==input$year)]),map.lty=0,leg.loc='below',y.scl=exp(data$white_effects),leg.cex=1,leg.rnd=3)
       }
-      if (input$types == "Black Only Arrests"){
-        fillmap2(tracts,paste(input$year,input$types,input$adj),exp(data$black_effects[which(data$year==input$year)]),map.lty=0,leg.loc='below',y.scl=exp(data$black_effects),leg.cex=1,leg.rnd=3)
-      }
-    }
-  })
+      if (input$data == "Black Only Arrests"){
+        fillmap2(tracts,paste(input$year,input$data,input$adj),exp(data$black_effects[which(data$year==input$year)]),map.lty=0,leg.loc='below',y.scl=exp(data$black_effects),leg.cex=1,leg.rnd=3)
+      }}})
+  
+  
+  output$table <- renderTable({
+    if (input$adj=="Poisson Regression"){
+      if (input$data=="Total Arrests"){
+        mat=effects[1:7,]
+        colnames(mat)<-c("Mean","95% CI Lower Bound","95% CI Upper Bound")
+        rownames(mat)<-c("% Black",
+                         "% Living in Poverty",
+                         "% Bachelors degree or more",
+                         "% Male",
+                         "% Secondary Homes",
+                         "% Aged 18-24",
+                         "Government Entity")
+        mat
+      } else
+        if (input$data=="White Only Arrests"){
+          mat=effects[8:14,]
+          colnames(mat)<-c("Mean","95% CI Lower Bound","95% CI Upper Bound")
+          rownames(mat)<-c("% Black",
+                           "% Living in Poverty",
+                           "% Bachelors degree or more",
+                           "% Male",
+                           "% Secondary Homes",
+                           "% Aged 18-24",
+                           "Government Entity")
+          mat
+        } else {
+          mat=effects[15:21,]
+          colnames(mat)<-c("Mean","95% CI Lower Bound","95% CI Upper Bound")
+          rownames(mat)<-c("% Black",
+                           "% Living in Poverty",
+                           "% Bachelors degree or more",
+                           "% Male",
+                           "% Secondary Homes",
+                           "% Aged 18-24",
+                           "Government Entity")
+          mat
+        }
+    }},rownames=T,colnames=T,digits=3,width="100%")
 })
 
-output$table <- renderTable({
-  if (input$adj=="Poisson Regression"){
-    if (input$data=="Total Arrests"){
-      mat=exp(effects[1:7,])
-      colnames(mat)<-c("Mean","95% CI Lower Bound","95% CI Upper Bound")
-      rownames(mat)<-c("% Black",
-                       "% Living in Poverty",
-                       "% Bachelors degree or more",
-                       "% Male",
-                       "% Secondary Homes",
-                       "% Aged 18-24",
-                       "Government Entity")
-      mat
-    } else
-      if (input$data=="White Only Arrests"){
-        mat=exp(effects[8:14,])
-        colnames(mat)<-c("Mean","95% CI Lower Bound","95% CI Upper Bound")
-        rownames(mat)<-c("% Black",
-                         "% Living in Poverty",
-                         "% Bachelors degree or more",
-                         "% Male",
-                         "% Secondary Homes",
-                         "% Aged 18-24",
-                         "Government Entity")
-        mat
-      } else {
-        mat=exp(effects[15:21,])
-        colnames(mat)<-c("Mean","95% CI Lower Bound","95% CI Upper Bound")
-        rownames(mat)<-c("% Black",
-                         "% Living in Poverty",
-                         "% Bachelors degree or more",
-                         "% Male",
-                         "% Secondary Homes",
-                         "% Aged 18-24",
-                         "Government Entity")
-        mat
-      }
-  }},rownames=T,colnames=T,digits=3,width="100%")
-
+# Run the application 
 shinyApp(ui = ui, server = server)
+
